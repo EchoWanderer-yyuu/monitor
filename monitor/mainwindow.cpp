@@ -57,3 +57,18 @@ void MainWindow::on_stopCameraBtn_clicked()
     ui->statusLabel->setText("状态: 摄像头已断开");
 }
 
+
+void MainWindow::on_motionDetectCheck_stateChanged(int arg1)
+{
+   
+}
+void MainWindow::on_faceDetectCheck_stateChanged(int arg1)
+{
+     this->faceflat = arg1;
+    
+    // 如果摄像头正在运行，通知 cameraWidget 更新人脸检测状态
+    if (cameraWidget) {
+        cameraWidget->setFaceDetectionEnabled(arg1 != 0);
+    }
+}
+

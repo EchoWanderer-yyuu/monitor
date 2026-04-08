@@ -25,9 +25,13 @@ private slots:
     void on_startCameraBtn_clicked();
 
     void on_stopCameraBtn_clicked();
+    void on_motionDetectCheck_stateChanged(int arg1);
+
+    void on_faceDetectCheck_stateChanged(int arg1);
 
 private:
     Ui::MainWindow *ui;
+    int faceflat = 0;  // 将 faceflat 作为 MainWindow 的私有成员变量
     CameraWidget *cameraWidget = nullptr;  // 摄像头部件
 };
 #endif // MAINWINDOW_H
