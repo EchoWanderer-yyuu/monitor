@@ -60,7 +60,9 @@ void MainWindow::on_stopCameraBtn_clicked()
 
 void MainWindow::on_motionDetectCheck_stateChanged(int arg1)
 {
-   
+   if (cameraWidget) {
+        cameraWidget->setMotionDetectionEnabled(arg1 != 0);
+    }
 }
 void MainWindow::on_faceDetectCheck_stateChanged(int arg1)
 {
@@ -69,6 +71,23 @@ void MainWindow::on_faceDetectCheck_stateChanged(int arg1)
     // 如果摄像头正在运行，通知 cameraWidget 更新人脸检测状态
     if (cameraWidget) {
         cameraWidget->setFaceDetectionEnabled(arg1 != 0);
+    }
+}
+
+
+void MainWindow::on_enhanceCheck_stateChanged(int arg1)
+{
+    if (cameraWidget) {
+        cameraWidget->setEnhancementEnabled(arg1 != 0);
+    }
+}
+
+
+void MainWindow::on_comboBox_currentIndexChanged(int index)
+{
+    if(cameraWidget)
+    {
+        cameraWidget->switchCamera(index);
     }
 }
 

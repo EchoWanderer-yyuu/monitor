@@ -22,7 +22,11 @@ public:
     
     void startCamera();
     void stopCamera();
-    void setFaceDetectionEnabled(bool enabled);  // 新增方法
+    void setFaceDetectionEnabled(bool enabled);  // 设置人脸检测开关    
+    void setMotionDetectionEnabled(bool enabled); // 设置运动检测开关
+    void setEnhancementEnabled(bool enabled); //设置画面增强开关
+    void applyEnhancement(cv::Mat &frame); //画面增强函数
+    void switchCamera(int cameraIndex); //切换摄像头
 
 private slots:
     void fetchFrame();
@@ -33,6 +37,9 @@ private:
     QTimer *timer;
     cv::CascadeClassifier faceCascade;  // 人脸分类器
     bool enableFaceDetection = false;  // 人脸检测开关
+    cv::Ptr<cv::BackgroundSubtractor> pBackSub;  // 背景减除器
+    bool enableMotionDetection = false;  // 运动检测开关
+    bool enableEnhancement = false;  // 画面增强开关
 };
 
 #endif // CAMERAWIDGET_H

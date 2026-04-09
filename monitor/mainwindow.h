@@ -29,6 +29,10 @@ private slots:
 
     void on_faceDetectCheck_stateChanged(int arg1);
 
+    void on_enhanceCheck_stateChanged(int arg1);
+
+    void on_comboBox_currentIndexChanged(int index);
+
 private:
     Ui::MainWindow *ui;
     int faceflat = 0;  // 将 faceflat 作为 MainWindow 的私有成员变量

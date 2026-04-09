@@ -135,11 +135,20 @@
     <layout class="QVBoxLayout">
      <item>
       <widget class="QCheckBox" name="motionDetectCheck">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="mouseTracking">
+        <bool>true</bool>
+       </property>
        <property name="text">
         <string>运动检测</string>
        </property>
-       <property name="checked">
+       <property name="checkable">
         <bool>true</bool>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
@@ -242,6 +251,39 @@
     <property name="text">
      <string>运行日志:</string>
     </property>
+   </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>516</x>
+      <y>170</y>
+      <width>81</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>切换摄像头</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="comboBox">
+    <property name="geometry">
+     <rect>
+      <x>530</x>
+      <y>190</y>
+      <width>86</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>摄像头1</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>摄像头2</string>
+     </property>
+    </item>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
