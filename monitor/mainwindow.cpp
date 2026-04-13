@@ -33,6 +33,9 @@ void MainWindow::on_startCameraBtn_clicked()
     if (!cameraWidget) {
         cameraWidget = new CameraWidget(ui->voidLabel, this);
     }
+
+    //连接日志信号
+    connect(cameraWidget,&CameraWidget::logMessage,this,&MainWindow::on_logMessage);
     
     // 启动摄像头
     cameraWidget->startCamera();
@@ -90,4 +93,13 @@ void MainWindow::on_comboBox_currentIndexChanged(int index)
         cameraWidget->switchCamera(index);
     }
 }
+
+void MainWindow::on_logMessage(const QString &message)
+{
+    QString time=QTime::currentTime().toString("hh:mm:ss");
+    ui->logText->append(time + message);
+    // 自动滚动到底部
+    ui->logText->verticalScrollBar()->setValue(ui->logText->verticalScrollBar()->maximum());
+}
+
 

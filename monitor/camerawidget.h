@@ -28,6 +28,9 @@ public:
     void applyEnhancement(cv::Mat &frame); //画面增强函数
     void switchCamera(int cameraIndex); //切换摄像头
 
+signals:
+    void logMessage(const QString &msg);  // 日志信号
+
 private slots:
     void fetchFrame();
 

@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QTime>
+#include <QScrollBar>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -32,6 +34,8 @@ private slots:
     void on_enhanceCheck_stateChanged(int arg1);
 
     void on_comboBox_currentIndexChanged(int index);
+
+    void on_logMessage(const QString &message);
 
 private:
     Ui::MainWindow *ui;

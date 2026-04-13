@@ -9,8 +9,10 @@ CameraWidget::CameraWidget(QLabel *videoLabel, QWidget *parent)
 
      if(!cap.isOpened()) {
         qDebug() << "摄像头打开失败！";
+        emit logMessage("[错误] 摄像头打开失败");
         return;
     }
+    emit logMessage("[信息] 摄像头已启动，后端: " + QString::fromStdString(cap.getBackendName()));
     qDebug() << "后端:" << QString::fromStdString(cap.getBackendName());
 
     qDebug() << "是否打开:" << cap.isOpened();
@@ -65,11 +67,13 @@ void CameraWidget::setFaceDetectionEnabled(bool enabled)
         if (faceCascade.load(cascadePaths[0].toStdString())) {
             qDebug() << "人脸分类器加载成功:" << cascadePaths[0];
             loaded = true;
+            emit logMessage("[信息] 人脸分类器加载成功:" + cascadePaths[0]);
         }
         
         
         if (!loaded) {
-            qDebug() << "所有路径都无法加载人脸分类器";
+            qDebug() << "路径都无法加载人脸分类器";
+            emit logMessage("[错误] 路径都无法加载人脸分类器");
         }
     }
 }
@@ -77,11 +81,13 @@ void CameraWidget::setFaceDetectionEnabled(bool enabled)
 void CameraWidget::setMotionDetectionEnabled(bool enabled)
 {
     enableMotionDetection = enabled;
+    emit logMessage(enabled ? "[信息] 运动检测已开启" : "[信息] 运动检测已关闭");
 }
 
 void CameraWidget::setEnhancementEnabled(bool enabled)
 {
     enableEnhancement = enabled;
+    emit logMessage(enabled ? "[信息] 画面增强已开启" : "[信息] 画面增强已关闭");
 }
 
 void CameraWidget::switchCamera(int cameraIndex)
@@ -99,6 +105,7 @@ void CameraWidget::switchCamera(int cameraIndex)
 
     if(!cap.isOpened()) {
         qDebug() << "摄像头打开失败！";
+        emit logMessage("[错误] 摄像头 " + QString::number(cameraIndex) + " 打开失败");
         // 修改 videoLabel 为错误文字
         videoLabel->clear();  // 清除当前图像
         videoLabel->setStyleSheet("background-color: black;");  // 设置黑色背景
@@ -107,6 +114,7 @@ void CameraWidget::switchCamera(int cameraIndex)
         return;
     }
     qDebug() << "摄像头打开成功！";
+    emit logMessage("[信息] 已切换到摄像头 " + QString::number(cameraIndex));
     // 重新启动定时器
     if(timer)
     {
@@ -197,6 +205,10 @@ void CameraWidget::fetchFrame()
             0,
             cv::Size(60, 60)  // 最小人脸尺寸，过滤掉太小的噪声
         );
+        static int frameCount = 0;
+        if (++frameCount % 30 == 0 && !faces.empty()) {
+            emit logMessage("[检测] 发现 " + QString::number(faces.size()) + " 张人脸");
+        }
 
         // 在每个检测到的人脸上画绿色矩形框
         for (const auto& face : faces) {
