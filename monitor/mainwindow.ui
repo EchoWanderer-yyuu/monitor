@@ -178,7 +178,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>ws://localhost:8080</string>
+     <string>ws://0.0.0.0:8765</string>
     </property>
    </widget>
    <widget class="QLabel" name="statusLabel">

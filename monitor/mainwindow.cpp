@@ -20,11 +20,18 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_connectBtn_clicked()
 {
-   
+   QString url=ui->serverInput->text();
+   if(cameraWidget)
+   {
+    cameraWidget->startWebRTC(url.toStdString());
+   }
 }
 void MainWindow::on_disconnectBtn_clicked()
 {
-
+    if(cameraWidget)
+    {
+        cameraWidget->stopWebRTC();
+    }
 
 }
 void MainWindow::on_startCameraBtn_clicked()
@@ -35,7 +42,7 @@ void MainWindow::on_startCameraBtn_clicked()
     }
 
     //连接日志信号
-    connect(cameraWidget,&CameraWidget::logMessage,this,&MainWindow::on_logMessage);
+    connect(cameraWidget,&CameraWidget::logMessage,this,&MainWindow::appendLog);
     
     // 启动摄像头
     cameraWidget->startCamera();
@@ -94,7 +101,7 @@ void MainWindow::on_comboBox_currentIndexChanged(int index)
     }
 }
 
-void MainWindow::on_logMessage(const QString &message)
+void MainWindow::appendLog(const QString &message)
 {
     QString time=QTime::currentTime().toString("hh:mm:ss");
     ui->logText->append(time + message);

@@ -21,7 +21,7 @@ extern "C" {
 using json = nlohmann::json;
 
 
-class webrtcstreamer
+class webrtcstreamer :public QObject
 {
     Q_OBJECT
 public:

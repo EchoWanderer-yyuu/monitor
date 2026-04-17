@@ -21,7 +21,6 @@ SOURCES += \
  main.cpp \
  mainwindow.cpp \
  webrtcstreamer.cpp \
- webrtcstreamer.cpp
 
 HEADERS += \
  camerawidget.h \

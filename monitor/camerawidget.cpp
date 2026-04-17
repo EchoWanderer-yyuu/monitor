@@ -163,7 +163,9 @@ void CameraWidget::fetchFrame()
         pBackSub->apply(frame, fgMask);   // fgMask: 白色(255)=运动，灰色(127)=阴影，黑色(0)=背景
 
          // 二值化，把阴影也变成黑色，只留运动
-        cv::threshold(fgMask, fgMask, 200, 255, cv::THRESH_BINARY_INV);
+        
+        cv::threshold(fgMask, fgMask, 200, 255, cv::THRESH_BINARY);
+
         // 形态学去噪
         cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3, 3));
         cv::morphologyEx(fgMask, fgMask, cv::MORPH_OPEN, kernel);   // 开运算：去小噪点
@@ -227,19 +229,16 @@ void CameraWidget::fetchFrame()
     {
         applyEnhancement(frame);
     }
-    //Mat->QImage
-    cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
-    QImage img(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888);
-    //显示到传入的 videoLabel
-    videoLabel->setPixmap(QPixmap::fromImage(img));
 
-    // 推流（在 BGR→RGB 转换之前，保持 BGR 格式）
     if(webrtcStreamer) {
         webrtcStreamer->pushFrame(frame);
     }
 
-    // 显示到 Qt 窗口
+
+    //Mat->QImage
     cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+    QImage img(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888);
+    //显示到传入的 videoLabel
     videoLabel->setPixmap(QPixmap::fromImage(img));
 }
 

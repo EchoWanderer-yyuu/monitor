@@ -1,6 +1,6 @@
 #include "webrtcstreamer.h"
 
-webrtcstreamer::webrtcstreamer(QObject *parent = nullptr)
+webrtcstreamer::webrtcstreamer(QObject *parent) :QObject(parent)
 {
 
 }
@@ -32,8 +32,18 @@ void webrtcstreamer::start(const std::string &signnalUrl)
             {"sdpMid", c.mid()}
         };
         ws->send(msg.dump());
-        emit logMessage("[WebRTC] 已发送 SDP offer");
+        
         });
+
+        pc->onLocalDescription([this](const rtc::Description d){
+            json msg={
+                {"type", std::string(d.typeString())},
+                {"sdp", std::string(d)}
+            };
+            ws->send(msg.dump());
+            emit logMessage("[WebRTC] 已发送 SDP offer");
+        });
+
 
         pc->onStateChange([this](rtc::PeerConnection::State s){
             if(s==rtc::PeerConnection::State::Connected){
@@ -101,23 +111,14 @@ void webrtcstreamer::pushFrame(const cv::Mat &frame)
  auto encoded = encodeFrame(frame);
  if (encoded.empty()) return;
 
- // 时间戳：90kHz 时钟（RTP 标准）
  timestamp += 90000 / fps;
 
  try {
- rtc::RtpPacketizationConfig config(ssrc, "video", 96,
- rtc::H264RtpPacketizer::defaultClockRate);
- auto packetizer = std::make_shared<rtc::H264RtpPacketizer>(
- rtc::H264RtpPacketizer::Separator::LongStartSequence, config);
-
- auto nalus = std::make_shared<rtc::NalUnits>();
- // 把 encoded 数据按 NAL unit 分割后发送
  videoTrack->send(reinterpret_cast<const std::byte*>(encoded.data()),
  encoded.size());
- } catch (const std::exception &e) {
- // 推流失败不影响主程序
- }
+ } catch (...) {}
 }
+
 
 bool webrtcstreamer::initEncoder()
 {
@@ -175,7 +176,7 @@ std::vector<std::byte> webrtcstreamer::encodeFrame(const cv::Mat &frame)
     std::vector<std::byte> result;
 
     if(avcodec_send_frame(codecCtx,avFrame)==0){
-        while(avcodec_receive_frame(codecCtx,avFrame) == 0){
+        while(avcodec_receive_packet(codecCtx,avPacket) == 0){
             auto *data=reinterpret_cast<std::byte*>(avPacket->data);
             result.insert(result.end(),data,data+avPacket->size);
             av_packet_unref(avPacket);

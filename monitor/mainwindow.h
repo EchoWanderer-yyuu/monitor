@@ -35,7 +35,7 @@ private slots:
 
     void on_comboBox_currentIndexChanged(int index);
 
-    void on_logMessage(const QString &message);
+    void appendLog(const QString &message);
 
 private:
     Ui::MainWindow *ui;
