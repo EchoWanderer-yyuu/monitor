@@ -232,4 +232,31 @@ void CameraWidget::fetchFrame()
     QImage img(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888);
     //显示到传入的 videoLabel
     videoLabel->setPixmap(QPixmap::fromImage(img));
+
+    // 推流（在 BGR→RGB 转换之前，保持 BGR 格式）
+    if(webrtcStreamer) {
+        webrtcStreamer->pushFrame(frame);
+    }
+
+    // 显示到 Qt 窗口
+    cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+    videoLabel->setPixmap(QPixmap::fromImage(img));
 }
+
+void CameraWidget::startWebRTC(const std::string &signnalUrl)
+{
+    if(!webrtcStreamer) {
+        webrtcStreamer=new webrtcstreamer(this);
+        connect(webrtcStreamer, &webrtcstreamer::logMessage, this, &CameraWidget::logMessage);
+    }
+
+    webrtcStreamer->start(signnalUrl);
+}
+
+void CameraWidget::stopWebRTC()
+{
+    if(webrtcStreamer) {
+        webrtcStreamer->stop();
+    }
+}
+

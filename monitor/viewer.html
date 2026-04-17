@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>监控画面</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h2 {
+            color: #4fc3f7;
+            margin-bottom: 16px;
+            letter-spacing: 2px;
+        }
+        #video-container {
+            position: relative;
+            border: 2px solid #4fc3f7;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 0 20px rgba(79, 195, 247, 0.3);
+        }
+        video {
+            display: block;
+            width: 640px;
+            height: 480px;
+            object-fit: cover;
+        }
+        #placeholder {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 16px;
+            pointer-events: none;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        input[type="text"] {
+            background: #16213e;
+            border: 1px solid #4fc3f7;
+            color: #eee;
+            padding: 8px 12px;
+            border-radius: 6px;
+            width: 260px;
+            font-size: 14px;
+        }
+        button {
+            background: #4fc3f7;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #81d4fa; }
+        button.secondary {
+            background: #333;
+            color: #eee;
+        }
+        button.secondary:hover { background: #555; }
+        #status-bar {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #aaa;
+            text-align: center;
+        }
+        #log-box {
+            margin-top: 20px;
+            background: #0f0f23;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 12px;
+            width: 640px;
+            max-height: 160px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            color: #b0bec5;
+        }
+        .log-line { margin: 2px 0; }
+        .log-info { color: #4fc3f7; }
+        .log-ok { color: #69f0ae; }
+        .log-warn { color: #ffd54f; }
+        .log-err { color: #ff5252; }
+    </style>
+</head>
+<body>
+
+    <h2>📹 实时监控</h2>
+
+    <div id="video-container">
+        <video id="video" autoplay playsinline></video>
+        <div id="placeholder">等待连接...</div>
+    </div>
+
+    <div class="controls">
+        <input type="text" id="serverInput" value="ws://192.168.183.128:8765"
+               placeholder="信令服务器地址，如 ws://192.168.183.128:8765">
+        <button id="connectBtn" onclick="connect()">连接</button>
+        <button class="secondary" onclick="disconnect()">断开</button>
+    </div>
+
+    <div id="status-bar">
+        状态：<span id="stateText">未连接</span>
+        &nbsp;|&nbsp;
+        分辨率：<span id="resText">--</span>
+        &nbsp;|&nbsp;
+        码率：<span id="bitrateText">--</span>
+    </div>
+
+    <div id="log-box"></div>
+
+    <script>
+        let ws = null;
+        let pc = null;
+        let lastBytes = 0;
+        let lastTime = 0;
+        const bitrateList = [];
+
+        function log(msg, type = 'info') {
+            const box = document.getElementById('log-box');
+            const now = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            const line = document.createElement('div');
+            line.className = `log-line log-${type}`;
+            line.textContent = `[${now}] ${msg}`;
+            box.appendChild(line);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function updateBitrate(bytes) {
+            const now = performance.now();
+            if (lastBytes > 0 && lastTime > 0) {
+                const elapsed = (now - lastTime) / 1000;
+                const bits = (bytes - lastBytes) * 8;
+                const kbps = Math.round(bits / elapsed / 1000);
+                bitrateList.push(kbps);
+                if (bitrateList.length > 30) bitrateList.shift();
+                const avg = Math.round(bitrateList.reduce((a, b) => a + b, 0) / bitrateList.length);
+                document.getElementById('bitrateText').textContent = avg + ' kbps';
+            }
+            lastBytes = bytes;
+            lastTime = now;
+        }
+
+        function connect() {
+            const url = document.getElementById('serverInput').value.trim();
+            if (!url) { log('请输入信令服务器地址', 'err'); return; }
+
+            disconnect();
+            log(`连接信令服务器: ${url}`, 'info');
+
+            ws = new WebSocket(url);
+
+            ws.onopen = () => {
+                log('✅ 信令服务器已连接', 'ok');
+                document.getElementById('stateText').textContent = '协商中...';
+            };
+
+            ws.onmessage = async (e) => {
+                let msg;
+                try { msg = JSON.parse(e.data); }
+                catch { log('收到原始消息: ' + e.data, 'warn'); return; }
+
+                if (!pc) {
+                    log('收到 offer，开始创建 PeerConnection...', 'info');
+                    createPeerConnection();
+                }
+
+                if (msg.type === 'offer') {
+                    log('📩 收到 SDP offer', 'info');
+                    try {
+                        await pc.setRemoteDescription(new RTCSessionDescription({
+                            type: msg.type,
+                            sdp: msg.sdp
+                        }));
+                        log('✅ offer 已设置', 'ok');
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        ws.send(JSON.stringify({
+                            type: 'answer',
+                            sdp: answer.sdp
+                        }));
+                        log('📤 已发送 SDP answer', 'ok');
+                    } catch (err) {
+                        log('处理 offer 失败: ' + err, 'err');
+                    }
+                } else if (msg.type === 'answer') {
+                    log('📩 收到 SDP answer', 'info');
+                    await pc.setRemoteDescription(new RTCSessionDescription({
+                        type: msg.type,
+                        sdp: msg.sdp
+                    }));
+                    log('✅ answer 已设置', 'ok');
+                } else if (msg.type === 'candidate') {
+                    log('📩 收到 ICE candidate', 'info');
+                    try {
+                        await pc.addIceCandidate({
+                            candidate: msg.candidate,
+                            sdpMid: msg.sdpMid,
+                            sdpMLineIndex: msg.sdpMLineIndex
+                        });
+                    } catch (err) {
+                        log('添加 candidate 失败: ' + err, 'warn');
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                log('❌ 信令连接已关闭', 'warn');
+                document.getElementById('stateText').textContent = '连接断开';
+            };
+
+            ws.onerror = (e) => {
+                log('⚠️ 信令 WebSocket 错误', 'err');
+            };
+        }
+
+        function createPeerConnection() {
+            pc = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun.stunprotocol.org:3478' }
+                ]
+            });
+
+            let videoTrack = null;
+            let lastPackets = 0;
+
+            pc.ontrack = (e) => {
+                log('🎬 收到视频轨道，开始播放', 'ok');
+                document.getElementById('placeholder').style.display = 'none';
+                const video = document.getElementById('video');
+                video.srcObject = e.streams[0];
+                videoTrack = e.track;
+
+                // 监听视频分辨率
+                const sender = pc.getSenders()[0];
+                if (sender && sender.getParameters) {
+                    const params = sender.getParameters();
+                    if (params.encodings && params.encodings[0]) {
+                        document.getElementById('resText').textContent =
+                            (params.encodings[0].maxBitrate / 1000) + ' kbps (设置)';
+                    }
+                }
+            };
+
+            pc.onconnectionstatechange = () => {
+                const state = pc.connectionState;
+                document.getElementById('stateText').textContent = {
+                    'new': '新建',
+                    'connecting': '连接中',
+                    'connected': '已连接',
+                    'disconnected': '断开',
+                    'failed': '失败',
+                    'closed': '关闭'
+                }[state] || state;
+
+                if (state === 'connected') {
+                    log('🎉 WebRTC 连接建立成功！', 'ok');
+                } else if (state === 'failed') {
+                    log('❌ WebRTC 连接失败', 'err');
+                }
+            };
+
+            pc.oniceconnectionstatechange = () => {
+                log('ICE 状态: ' + pc.iceConnectionState, 'info');
+            };
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                    ws.send(JSON.stringify({
+                        type: 'candidate',
+                        candidate: e.candidate.candidate,
+                        sdpMid: e.candidate.sdpMid,
+                        sdpMLineIndex: e.candidate.sdpMLineIndex
+                    }));
+                }
+            };
+
+            // 估算接收码率
+            setInterval(() => {
+                if (pc && pc.getStats) {
+                    pc.getStats().then(stats => {
+                        let totalBytes = 0;
+                        stats.forEach(report => {
+                            if (report.type === 'inbound-rtp' && report.kind === 'video') {
+                                totalBytes = report.bytesReceived || 0;
+                            }
+                        });
+                        if (totalBytes > 0) updateBitrate(totalBytes);
+                    });
+                }
+            }, 1000);
+        }
+
+        function disconnect() {
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            document.getElementById('video').srcObject = null;
+            document.getElementById('placeholder').style.display = 'flex';
+            document.getElementById('stateText').textContent = '未连接';
+            document.getElementById('resText').textContent = '--';
+            document.getElementById('bitrateText').textContent = '--';
+            bitrateList.length = 0;
+            lastBytes = 0;
+            lastTime = 0;
+        }
+    </script>
+
+</body>
+</html>

@@ -1,32 +1,37 @@
-QT       += core gui
+QT += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-CONFIG += c++11
+CONFIG += c++17
 QT += multimedia multimediawidgets core
-LIBS += -lopencv_core -lopencv_videoio -lopencv_highgui
+
+# FFmpeg
+LIBS += -lavcodec -lavformat -lavutil -lswscale
+
+# libdatachannel
+LIBS += -L/usr/local/lib -ldatachannel
+INCLUDEPATH += /usr/local/include
+
+# OpenCV
 INCLUDEPATH += $$system(pkg-config --cflags-only-I opencv4 | sed 's/-I//g')
 LIBS += $$system(pkg-config --libs opencv4)
 
-
-# You can make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
 SOURCES += \
-    camerawidget.cpp \
-    main.cpp \
-    mainwindow.cpp
+ camerawidget.cpp \
+ main.cpp \
+ mainwindow.cpp \
+ webrtcstreamer.cpp \
+ webrtcstreamer.cpp
 
 HEADERS += \
-    camerawidget.h \
-    mainwindow.h
+ camerawidget.h \
+ mainwindow.h \
+ webrtcstreamer.h \
+ webrtcstreamer.h
 
 FORMS += \
-    mainwindow.ui
+ mainwindow.ui
 
-# Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-
