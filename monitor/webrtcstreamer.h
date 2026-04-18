@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 
+
 // FFmpeg
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -63,6 +64,7 @@ private:
     void handleSignalingMessage(const std::string &msg);
     void sendSignalingMessage(const std::string &type, const std::string &sdp);
     std::vector<std::byte> encodeFrame(const cv::Mat &frame);
+    std::vector<std::byte> convertAnnexBToLengthPrefix(const uint8_t* data, int size);
 };
 
 #endif // WEBRTCSTREAMER_H
