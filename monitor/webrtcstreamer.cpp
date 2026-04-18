@@ -32,6 +32,7 @@ void webrtcstreamer::start(const std::string &signnalUrl)
             {"sdpMid", c.mid()}
         };
         ws->send(msg.dump());
+        pcReady = true;
         
         });
 
@@ -60,6 +61,7 @@ void webrtcstreamer::start(const std::string &signnalUrl)
     });
 
     ws->onMessage([this](std::variant<rtc::binary, rtc::string> msg) {
+    if (!pcReady) return;  // ← onOpen 还没完成，不处理消息
     if (std::holds_alternative<rtc::string>(msg)) {
         handleSignalingMessage(std::get<rtc::string>(msg));
     }
@@ -108,7 +110,16 @@ void webrtcstreamer::pushFrame(const cv::Mat &frame)
 {
  if (!running || !videoTrack || !videoTrack->isOpen()) return;
 
- auto encoded = encodeFrame(frame);
+
+auto encoded = encodeFrame(frame);
+ // 调试
+    static int cnt = 0;
+    if (++cnt % 30 == 0) {
+        emit logMessage(QString("[WebRTC] 第%1帧, 编码大小=%2 bytes, running=%3")
+            .arg(cnt).arg(encoded.size()).arg(running));
+    }
+
+ 
  if (encoded.empty()) return;
 
  timestamp += 90000 / fps;
@@ -166,22 +177,29 @@ void webrtcstreamer::releaseEncoder()
 }
 std::vector<std::byte> webrtcstreamer::encodeFrame(const cv::Mat &frame)
 {
-    if(frame.empty() || !codecCtx) return {};
-    // BGR → YUV420P
-    const uint8_t *srcData[1]={frame.data};
-    int srcLinesize[1]={(int)frame.step};
-    sws_scale(swsCtx,srcData,srcLinesize,0,frameHeight,avFrame->data,avFrame->linesize);
+ if (frame.empty() || !codecCtx) return {};
 
-    avFrame->pts=timestamp;
-    std::vector<std::byte> result;
+ const uint8_t *srcData[1] = {frame.data};
+ int srcLinesize[1] = {(int)frame.step};
+ sws_scale(swsCtx, srcData, srcLinesize, 0, frameHeight,
+ avFrame->data, avFrame->linesize);
 
-    if(avcodec_send_frame(codecCtx,avFrame)==0){
-        while(avcodec_receive_packet(codecCtx,avPacket) == 0){
-            auto *data=reinterpret_cast<std::byte*>(avPacket->data);
-            result.insert(result.end(),data,data+avPacket->size);
-            av_packet_unref(avPacket);
-        }
-    }
+ avFrame->pts = timestamp;
+ timestamp += 90000 / fps;
 
-    return result;
+ std::vector<std::byte> result;
+
+ int ret = avcodec_send_frame(codecCtx, avFrame);
+ if (ret < 0) return {};
+
+ // 正常编码循环：取走所有可用的 packet
+ while (true) {
+ int ret2 = avcodec_receive_packet(codecCtx, avPacket);
+ if (ret2 < 0) break; // EAGAIN = 编码器还在缓冲，正常
+ auto *data = reinterpret_cast<std::byte*>(avPacket->data);
+ result.insert(result.end(), data, data + avPacket->size);
+ av_packet_unref(avPacket);
+ }
+
+ return result;
 }

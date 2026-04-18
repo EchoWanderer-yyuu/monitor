@@ -43,6 +43,8 @@ private:
     rtc::SSRC ssrc=42;
     uint32_t timestamp=0;
 
+    bool pcReady = false;
+
     // FFmpeg 编译器
     AVCodecContext* codecCtx = nullptr;
     SwsContext* swsCtx = nullptr;
